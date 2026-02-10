@@ -430,9 +430,14 @@ def main():
     st.markdown("Discord Community Support Tracking")
     st.markdown("---")
     
+    # Ensure database exists (critical for Streamlit Cloud where data/ doesn't persist)
+    from utils.db import init_database
+    init_database()
+    
     # Auto-sync on startup if database is empty (important for Streamlit Cloud)
     if get_issues_count() == 0:
-        _auto_sync_on_startup()
+        with st.spinner("Syncing data from Google Sheets (first load)..."):
+            _auto_sync_on_startup()
     
     if get_issues_count() == 0:
         st.warning("⚠️ Database is empty. Sync failed or not yet run.")
