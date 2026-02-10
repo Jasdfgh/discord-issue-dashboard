@@ -1,0 +1,43 @@
+# Credentials - NEVER commit these
+*.json
+credentials/
+secrets/
+.env
+
+# Database files (local data, not for git)
+*.db
+*.sqlite
+*.sqlite3
+data/*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

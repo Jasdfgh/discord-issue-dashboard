@@ -1,0 +1,24 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.cursor
+.specstory
+.vscode
+__pycache__
+*.pyc
+
+# Environment
+.env
+
+# Runtime data (mounted as volumes)
+data/
+logs/
+
+# Docs (not needed in container)
+*.md
+pages/_deprecated/
+
+# Tests (not needed in production container)
+tests/

@@ -1,0 +1,18 @@
+services:
+  dashboard:
+    image: jasdfgh01/discord-dashboard:latest
+    build: .
+    container_name: discord-dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data                          # SQLite persistent storage
+      - ./logs:/app/logs                          # Log files
+      - ${GOOGLE_CREDENTIALS_PATH}:/app/credentials.json:ro  # Credentials (read-only)
+    env_file: .env
+    restart: unless-stopped
+    environment:
+      - GOOGLE_CREDENTIALS_PATH=/app/credentials.json
+      - DATABASE_PATH=/app/data/issues.db
+      - DATA_DIR=/app/data
+      - LOGS_DIR=/app/logs
