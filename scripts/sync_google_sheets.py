@@ -76,18 +76,27 @@ def fetch_google_sheets_data():
 
 
 def transform_data(raw_data):
-    """转换数据格式（列名映射）"""
+    """转换数据格式（列名映射），跳过无效行"""
     transformed = []
+    skipped = 0
     
     for row in raw_data:
+        # 跳过 ID 为空的行（上游数据录入遗漏）
+        raw_id = row.get("ID", "")
+        if raw_id == "" or raw_id is None:
+            skipped += 1
+            continue
+        
         item = {}
         for sheet_col, db_col in COLUMN_MAPPING.items():
             value = row.get(sheet_col, "")
-            # 清理数据
             if isinstance(value, str):
                 value = value.strip()
             item[db_col] = value
         transformed.append(item)
+    
+    if skipped > 0:
+        logger.warning(f"  Skipped {skipped} rows with empty ID")
     
     return transformed
 
