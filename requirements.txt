@@ -5,7 +5,7 @@
 streamlit>=1.51.0
 
 # Data Processing
-pandas>=2.3.0
+pandas>=2.3.0,<3.0.0
 numpy>=2.2.0
 
 # Visualization
