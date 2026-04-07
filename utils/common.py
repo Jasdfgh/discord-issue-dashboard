@@ -92,6 +92,33 @@ PROBLEM_CATEGORY_COLORS = {
     "Other": "#6b7280",                # gray
 }
 
+_FALLBACK_PALETTE = [
+    "#06b6d4",  # cyan
+    "#84cc16",  # lime
+    "#f43f5e",  # rose
+    "#a855f7",  # purple-bright
+    "#0ea5e9",  # sky
+    "#d946ef",  # fuchsia
+    "#22d3ee",  # cyan-light
+    "#facc15",  # yellow
+]
+
+
+def get_problem_category_colors(categories):
+    """
+    Build color map for problem categories.
+    Uses predefined colors for known categories, auto-assigns distinct colors for new ones.
+    """
+    colors = {}
+    auto_idx = 0
+    for cat in categories:
+        if cat in PROBLEM_CATEGORY_COLORS:
+            colors[cat] = PROBLEM_CATEGORY_COLORS[cat]
+        else:
+            colors[cat] = _FALLBACK_PALETTE[auto_idx % len(_FALLBACK_PALETTE)]
+            auto_idx += 1
+    return colors
+
 # Progress 表格样式 (用于 Styler.applymap)
 PROGRESS_STYLES = {
     "Done": "background-color: #dcfce7; color: #166534; font-weight: 600;",

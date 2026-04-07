@@ -17,7 +17,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from utils.db import get_all_issues
 from utils.common import (
     normalize_progress, parse_date,
-    PROGRESS_COLORS, PROBLEM_CATEGORY_COLORS,
+    PROGRESS_COLORS, get_problem_category_colors,
 )
 from utils.auth import check_auth
 
@@ -422,8 +422,8 @@ def render_problem_category_chart(df, period_label):
     problem_counts = df_valid["problem_category"].value_counts().reset_index()
     problem_counts.columns = ["Problem Type", "Count"]
     
-    # Get colors
-    colors = [PROBLEM_CATEGORY_COLORS.get(p, "#6b7280") for p in problem_counts["Problem Type"]]
+    color_map = get_problem_category_colors(problem_counts["Problem Type"].tolist())
+    colors = [color_map[p] for p in problem_counts["Problem Type"]]
     
     fig = go.Figure(data=[go.Pie(
         labels=problem_counts["Problem Type"],
