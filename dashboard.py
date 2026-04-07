@@ -301,7 +301,7 @@ def render_data_table(filters):
     st.markdown(f"**{len(df_display)} records found**")
     
     # Apply styles and display
-    styled_df = df_display.style.applymap(
+    styled_df = df_display.style.map(
         style_progress, 
         subset=["Status"]
     )
