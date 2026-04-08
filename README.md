@@ -83,9 +83,17 @@ tail -f logs/dashboard.log      # View logs
 ### Data Sync
 
 ```bash
-# Auto: cron runs hourly (see crontab -l)
-# Manual:
+# Manual sync:
 python scripts/sync_google_sheets.py
+
+# Install hourly auto-sync (cron):
+crontab -l 2>/dev/null | grep -v "cron_sync" | { cat; echo "0 * * * * /home/yaywang/discord-dashboard/output/discord-issue-dashboard/scripts/cron_sync.sh >> /home/yaywang/discord-dashboard/output/discord-issue-dashboard/logs/cron_sync.log 2>&1"; } | crontab -
+
+# Verify cron is installed:
+crontab -l
+
+# Remove cron:
+crontab -l | grep -v "cron_sync" | crontab -
 ```
 
 ### Quality Grading
@@ -117,11 +125,20 @@ bash scripts/backup.sh /path 14     # Custom path, 14-day retention
 
 ```bash
 cd ~/discord-dashboard/output/discord-issue-dashboard
+
+# 1. Start the dashboard
 ./scripts/start.sh
-# Verify:
+
+# 2. Verify it's running
 curl -f http://localhost:8501/_stcore/health
-# Check cron:
+
+# 3. Verify cron is still installed (crontab survives reboot, but check)
 crontab -l | grep cron_sync
+# If missing, re-install:
+crontab -l 2>/dev/null | grep -v "cron_sync" | { cat; echo "0 * * * * /home/yaywang/discord-dashboard/output/discord-issue-dashboard/scripts/cron_sync.sh >> /home/yaywang/discord-dashboard/output/discord-issue-dashboard/logs/cron_sync.log 2>&1"; } | crontab -
+
+# 4. Verify .env exists and has correct GOOGLE_CREDENTIALS_PATH
+cat .env | grep GOOGLE_CREDENTIALS_PATH
 ```
 
 ## Deployment Modes
