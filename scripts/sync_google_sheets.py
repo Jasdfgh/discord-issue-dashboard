@@ -68,8 +68,12 @@ def fetch_google_sheets_data():
         logger.info(f"  Worksheet: {worksheet.title}")
         
         logger.info("[2/3] Fetching data...")
-        raw_data = worksheet.get_all_records()
-        logger.info(f"  Raw rows: {len(raw_data)}")
+        all_values = worksheet.get_all_values()
+        if len(all_values) < 2:
+            return []
+        headers = all_values[0]
+        raw_data = [dict(zip(headers, row)) for row in all_values[1:]]
+        logger.info(f"  Raw rows: {len(raw_data)} (headers: {headers[:3]}...)")
         return raw_data
     
     return retry_on_error(_connect_and_fetch, "Google Sheets fetch")
@@ -80,9 +84,9 @@ def transform_data(raw_data):
     transformed = []
     skipped = 0
     
+    id_col = next((k for k, v in COLUMN_MAPPING.items() if v == "id"), "ID")
     for row in raw_data:
-        # 跳过 ID 为空的行（上游数据录入遗漏）
-        raw_id = row.get("ID", "")
+        raw_id = row.get(id_col, "")
         if raw_id == "" or raw_id is None:
             skipped += 1
             continue

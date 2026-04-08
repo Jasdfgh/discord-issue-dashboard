@@ -8,7 +8,7 @@ secrets/
 *.db
 *.sqlite
 *.sqlite3
-data/*.db
+data/
 
 # Python
 __pycache__/

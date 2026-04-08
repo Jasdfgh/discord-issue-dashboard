@@ -42,11 +42,12 @@ def init_database():
         )
     """)
     
-    # 迁移: 为旧表添加 problem_category 列 (如果不存在)
-    try:
-        cursor.execute("ALTER TABLE issues ADD COLUMN problem_category TEXT")
-    except sqlite3.OperationalError:
-        pass  # 列已存在
+    # 迁移: 为旧表添加缺失列
+    for col in ["problem_category", "last_update_date"]:
+        try:
+            cursor.execute(f"ALTER TABLE issues ADD COLUMN {col} TEXT")
+        except sqlite3.OperationalError:
+            pass
     
     # 创建索引
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_date ON issues(date)")
@@ -54,6 +55,17 @@ def init_database():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_progress ON issues(progress)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_owner ON issues(owner)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_problem_category ON issues(problem_category)")
+    
+    # 质量分级表（独立于 issues，sync 不会清除分级结果）
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS quality_grades (
+            issue_id INTEGER PRIMARY KEY,
+            quality_grade TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            graded_at TEXT NOT NULL,
+            model_used TEXT
+        )
+    """)
     
     # 创建同步日志表
     cursor.execute("""
@@ -97,10 +109,9 @@ def insert_issues(issues: List[Dict[str, Any]]):
     with get_connection() as conn:
         cursor = conn.cursor()
         
-        # 准备 SQL
         columns = ["id", "date", "channel", "original_source", "category", 
                    "issue", "owner", "reply_approach", "progress", "result",
-                   "problem_category"]
+                   "problem_category", "last_update_date"]
         placeholders = ", ".join(["?" for _ in columns])
         sql = f"INSERT OR REPLACE INTO issues ({', '.join(columns)}) VALUES ({placeholders})"
         
@@ -126,7 +137,7 @@ def safe_replace_issues(issues: List[Dict[str, Any]]):
     
     columns = ["id", "date", "channel", "original_source", "category", 
                "issue", "owner", "reply_approach", "progress", "result",
-               "problem_category"]
+               "problem_category", "last_update_date"]
     placeholders = ", ".join(["?" for _ in columns])
     sql = f"INSERT OR REPLACE INTO issues ({', '.join(columns)}) VALUES ({placeholders})"
     
@@ -283,8 +294,64 @@ def get_statistics() -> Dict[str, Any]:
         return stats
 
 
+# ============== Quality Grading Functions ==============
+
+def get_issues_needing_grading() -> List[Dict[str, Any]]:
+    """
+    Find issues that need (re-)grading:
+    1. No grade yet (not in quality_grades table)
+    2. Content changed since last grading (hash mismatch)
+    """
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT i.id, i.channel, i.category, i.issue,
+                   i.reply_approach, i.problem_category, i.owner,
+                   q.content_hash AS old_hash
+            FROM issues i
+            LEFT JOIN quality_grades q ON i.id = q.issue_id
+            ORDER BY i.id
+        """)
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def upsert_quality_grades(grades: List[Dict[str, Any]]):
+    """Batch insert/update quality grades."""
+    if not grades:
+        return
+    with get_connection() as conn:
+        conn.executemany(
+            """INSERT OR REPLACE INTO quality_grades
+               (issue_id, quality_grade, content_hash, graded_at, model_used)
+               VALUES (?, ?, ?, ?, ?)""",
+            [(g["issue_id"], g["quality_grade"], g["content_hash"],
+              g["graded_at"], g.get("model_used", "")) for g in grades],
+        )
+        conn.commit()
+
+
+def get_issues_with_grades() -> List[Dict[str, Any]]:
+    """Get all issues LEFT JOINed with quality grades."""
+    with get_connection() as conn:
+        cursor = conn.execute("""
+            SELECT i.*, q.quality_grade, q.graded_at
+            FROM issues i
+            LEFT JOIN quality_grades q ON i.id = q.issue_id
+            ORDER BY i.id DESC
+        """)
+        return [dict(row) for row in cursor.fetchall()]
+
+
+def get_grading_stats() -> Dict[str, int]:
+    """Get grading progress stats."""
+    with get_connection() as conn:
+        total = conn.execute("SELECT COUNT(*) FROM issues").fetchone()[0]
+        graded = conn.execute("SELECT COUNT(*) FROM quality_grades").fetchone()[0]
+        return {"total": total, "graded": graded, "ungraded": total - graded}
+
+
 if __name__ == "__main__":
-    # 测试
     init_database()
     print(f"数据库路径: {DATABASE_PATH}")
     print(f"Issues 数量: {get_issues_count()}")
+    stats = get_grading_stats()
+    print(f"分级进度: {stats['graded']}/{stats['total']}")

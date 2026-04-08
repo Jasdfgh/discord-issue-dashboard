@@ -15,6 +15,12 @@ plotly>=6.3.0
 gspread>=6.0.0
 google-auth>=2.0.0
 
+# LLM API (internal gateway, Anthropic SDK)
+anthropic>=0.42.0
+
+# Chart PNG export
+kaleido>=0.2.1
+
 # Excel Support (for reference project compatibility)
 openpyxl>=3.1.0
 
