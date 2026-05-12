@@ -84,9 +84,16 @@ def transform_data(raw_data):
     transformed = []
     skipped = 0
     
-    id_col = next((k for k, v in COLUMN_MAPPING.items() if v == "id"), "ID")
+    id_col = next((k for k, v in COLUMN_MAPPING.items() if v == "id"), None)
+
+    # Fallback: if ID column name not found in data, use the first column
+    if raw_data and id_col and id_col not in raw_data[0]:
+        first_key = next(iter(raw_data[0]), None)
+        logger.warning(f"  ID column '{id_col}' not in headers, falling back to first column '{first_key}'")
+        id_col = first_key
+
     for row in raw_data:
-        raw_id = row.get(id_col, "")
+        raw_id = row.get(id_col, "") if id_col else ""
         if raw_id == "" or raw_id is None:
             skipped += 1
             continue
@@ -97,6 +104,11 @@ def transform_data(raw_data):
             if isinstance(value, str):
                 value = value.strip()
             item[db_col] = value
+
+        # If ID came from a non-mapped column, store it explicitly
+        if id_col and id_col not in COLUMN_MAPPING:
+            item["id"] = str(row.get(id_col, "")).strip()
+
         transformed.append(item)
     
     if skipped > 0:

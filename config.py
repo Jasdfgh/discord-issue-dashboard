@@ -101,7 +101,7 @@ def get_team(owner: str) -> str:
 # ============== 字段映射 ==============
 # Google Sheets 列名 -> 数据库字段名
 COLUMN_MAPPING = {
-    "ID": "id",
+    "id": "id",
     "Date": "date",
     "Channel / Chat": "channel",
     "Original Source": "original_source",
