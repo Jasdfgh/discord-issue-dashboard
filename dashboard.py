@@ -329,11 +329,28 @@ def _auto_sync_on_startup():
     except Exception as e:
         import logging
         logging.getLogger("discord_dashboard").warning(f"Auto-sync on startup failed: {e}")
-        st.session_state["_sync_attempted"] = False  # allow retry on next rerun
+        st.session_state["_sync_attempted"] = False
+
+
+def _is_streamlit_cloud():
+    """Detect Streamlit Cloud (subprocess can't access st.secrets there)"""
+    try:
+        return "gcp_service_account" in st.secrets
+    except Exception:
+        return False
 
 
 def run_sync():
-    """Run data sync from Google Sheets"""
+    """Run data sync from Google Sheets (direct call on Cloud, subprocess locally)"""
+    if _is_streamlit_cloud():
+        try:
+            from scripts.sync_google_sheets import sync
+            success = sync()
+            from utils.db import get_issues_count
+            return success, f"Synced {get_issues_count()} records"
+        except Exception as e:
+            return False, str(e)
+
     import subprocess
     try:
         result = subprocess.run(
@@ -446,7 +463,20 @@ def main():
     render_sync_status()
 
     if get_issues_count() == 0:
-        st.warning("⚠️ Database is empty. Sync failed or not yet run. Use **Sync Now** in the sidebar.")
+        st.warning("⚠️ Database is empty. Use **🔄 Sync Now** in the sidebar to load data.")
+        # Show debug info for troubleshooting on Cloud
+        if _is_streamlit_cloud():
+            with st.expander("Debug info"):
+                try:
+                    from scripts.sync_google_sheets import fetch_google_sheets_data, transform_data
+                    raw = fetch_google_sheets_data()
+                    st.write(f"Raw rows from Sheets: {len(raw)}")
+                    if raw:
+                        st.write(f"First row keys: {list(raw[0].keys())[:5]}")
+                        data = transform_data(raw)
+                        st.write(f"After transform: {len(data)} records")
+                except Exception as e:
+                    st.error(f"Fetch failed: {e}")
         return
     
     # Top metrics
