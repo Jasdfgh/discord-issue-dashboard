@@ -314,19 +314,22 @@ def render_data_table(filters):
     )
 
 
-@st.cache_resource
 def _auto_sync_on_startup():
     """
-    Auto-sync on first load (runs once per app lifecycle).
+    Auto-sync on first load (runs once per session).
     Critical for Streamlit Cloud where there's no cron and no persistent storage.
+    Uses session_state instead of cache_resource so failures don't block retries.
     """
+    if st.session_state.get("_sync_attempted"):
+        return
+    st.session_state["_sync_attempted"] = True
     try:
         from scripts.sync_google_sheets import sync
         sync()
     except Exception as e:
-        # Don't crash the app if sync fails - there might be cached data
         import logging
         logging.getLogger("discord_dashboard").warning(f"Auto-sync on startup failed: {e}")
+        st.session_state["_sync_attempted"] = False  # allow retry on next rerun
 
 
 def run_sync():
@@ -439,8 +442,11 @@ def main():
         with st.spinner("Syncing data from Google Sheets (first load)..."):
             _auto_sync_on_startup()
     
+    # Sync status (always render so manual sync is accessible even when DB is empty)
+    render_sync_status()
+
     if get_issues_count() == 0:
-        st.warning("⚠️ Database is empty. Sync failed or not yet run.")
+        st.warning("⚠️ Database is empty. Sync failed or not yet run. Use **Sync Now** in the sidebar.")
         return
     
     # Top metrics
@@ -450,9 +456,6 @@ def main():
     
     # Sidebar filters
     filters = render_filters()
-    
-    # Sync status
-    render_sync_status()
     
     # Data table
     st.subheader("📋 Issue List")
